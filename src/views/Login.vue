@@ -13,27 +13,31 @@
         </div>
       </div>
       <div v-if="loginType === t('shou-ji-hao-deng-lu')">
-        <!-- 账号选择界面 -->
+        <!-- 账号选择界面：一个手机号绑定多个酷狗账号时，让用户挑一个再登录 -->
         <div v-if="showAccountSelection" class="account-selection">
-          <p class="selection-tip">该手机绑定多个账号，请选择要登录的账号</p>
+          <p class="selection-tip">{{ $t('gai-shou-ji-hao-bang-ding-le-duo-ge-zhang-hao') }}</p>
           <div class="account-list">
-            <div v-for="account in accountList" :key="account.userid" class="account-item"
-              @click="selectAccount(account)">
+            <button v-for="account in accountList" :key="account.userid" type="button" class="account-item"
+              :disabled="isPhoneLoginLoading" @click="selectAccount(account)">
               <div class="account-avatar">
-                <img :src="account.pic || './assets/images/profile.jpg'" :alt="account.nickname" />
+                <img v-if="hasAvatar(account)" :src="account.pic" :alt="account.nickname || ''"
+                  @error="handleAvatarError(account.userid)" />
+                <span v-else class="account-avatar-placeholder">{{ getAvatarText(account.nickname) }}</span>
               </div>
               <div class="account-info">
-                <div class="account-name">{{ account.nickname || '未命名用户' }}</div>
+                <div class="account-name">{{ account.nickname || $t('wei-ming-ming-yong-hu') }}</div>
                 <div class="account-status">
-                  <span class="svip-badge">Lv {{ account.p_grade }}</span>
+                  <span class="account-username" v-if="account.username">{{ account.username }}</span>
                   <span class="user-level">UID：{{ account.userid }}</span>
                 </div>
               </div>
-              <div class="select-arrow">→</div>
-            </div>
+              <span v-if="isPhoneLoginLoading && pendingUserId === account.userid"
+                class="loading-spinner loading-spinner-primary"></span>
+              <span v-else class="select-arrow">→</span>
+            </button>
           </div>
-          <button type="button" class="back-button" @click="backToLogin">
-            返回登录
+          <button type="button" class="back-button" :disabled="isPhoneLoginLoading" @click="backToLogin">
+            {{ $t('fan-hui-deng-lu') }}
           </button>
         </div>
 
@@ -141,8 +145,27 @@ const phoneForm = reactive({
   code: ''
 });
 
+// 一个手机号绑定多个酷狗账号时，官方接口会返回这个 error_code 和 data.info_list，
+// 必须让用户先挑一个账号，带上 userid 再登录一次
+const MULTI_ACCOUNT_ERROR_CODE = 34175;
+
 const showAccountSelection = ref(false);
 const accountList = ref([]);
+// 正在登录的账号，用来把整个列表锁住，避免连点发出多次登录请求
+const pendingUserId = ref(null);
+// 头像加载失败的账号，退化成昵称首字，省得界面上出现碎图
+const invalidAvatars = ref([]);
+
+// 没有可用头像的（没返回 pic，或者图挂了）就不渲染 img
+const hasAvatar = (account) => Boolean(account.pic) && !invalidAvatars.value.includes(account.userid);
+
+const handleAvatarError = (userid) => {
+  if (!invalidAvatars.value.includes(userid)) {
+    invalidAvatars.value.push(userid);
+  }
+};
+
+const getAvatarText = (nickname) => (nickname || '?').trim().charAt(0).toUpperCase();
 
 // 表单验证错误信息
 const phoneFormErrors = reactive({
@@ -276,21 +299,54 @@ const phoneLogin = async (selectedUserId = null) => {
       $message.success(t('deng-lu-cheng-gong'));
     }
   } catch (error) {
-    if (error.response.data?.data?.info_list && !selectedUserId) {
-      accountList.value = error.response.data.data.info_list;
-      showAccountSelection.value = true;
-    } else {
-      $message.error(error.response.data?.data || t('deng-lu-shi-bai'));
-    }
-    console.error(error.response.data);
+    handlePhoneLoginError(error, selectedUserId);
   } finally {
     isPhoneLoginLoading.value = false;
+    pendingUserId.value = null;
   }
+};
+
+// 服务端返回的错误信息结构不统一，挨个试一遍，只取能直接给人看的字符串
+const pickErrorMessage = (payload, fallback) => {
+  if (typeof payload === 'string' && payload) return payload;
+  return payload?.msg || payload?.error || payload?.data?.msg || payload?.data?.error || fallback;
+};
+
+// 手机号登录失败统一走这里：能选账号就弹选择列表，其它情况给一句看得懂的提示
+const handlePhoneLoginError = (error, selectedUserId) => {
+  // 断网或者本地接口没起来时没有 response，不能直接取 error.response.data
+  const payload = error?.response?.data;
+  console.error('phone login failed:', payload || error);
+
+  const infoList = payload?.data?.info_list;
+  const isMultiAccount = Number(payload?.error_code) === MULTI_ACCOUNT_ERROR_CODE;
+
+  if (selectedUserId) {
+    // 已经带了 userid 还失败，通常是这个验证码被上一次请求用掉了，让用户回去重新获取
+    backToLogin();
+    $message.error(pickErrorMessage(payload, t('yan-zheng-ma-yi-shi-xiao')));
+    return;
+  }
+
+  if (isMultiAccount && Array.isArray(infoList) && infoList.length > 0) {
+    accountList.value = infoList;
+    showAccountSelection.value = true;
+    return;
+  }
+
+  if (isMultiAccount) {
+    // 同一个错误码但一个账号都没给，说明这个号下面没有能登录的账号
+    $message.error(t('gai-shou-ji-hao-xia-wu-ke-deng-lu-zhang-hao'));
+    return;
+  }
+
+  $message.error(pickErrorMessage(payload, t('deng-lu-shi-bai')));
 };
 
 // 切换登录方式
 const handleTabSwitch = (value) => {
   clearInterval(interval.value);
+  backToLogin(); // 切走了就把账号选择列表收起来，下次进来是干净的
   if (value === t('sao-ma-deng-lu')) {
     getQrCode();
   }
@@ -320,16 +376,18 @@ const getQrCode = async () => {
   }
 };
 
-// 选择账号登录
+// 选择账号登录：用同一个手机号 + 验证码，带上 userid 再登一次
 const selectAccount = async (account) => {
-  isPhoneLoginLoading.value = true;
+  if (isPhoneLoginLoading.value) return; // 防连点，短时间内多次请求容易被风控
+  pendingUserId.value = account.userid;
   await phoneLogin(account.userid);
 };
 
-// 返回登录界面
+// 返回登录界面，让用户重新确认验证码
 const backToLogin = () => {
   showAccountSelection.value = false;
   accountList.value = [];
+  invalidAvatars.value = [];
 };
 
 // 检查二维码扫描状态
@@ -649,6 +707,16 @@ h2 {
   vertical-align: middle;
 }
 
+// 列表项背景是浅色的，转圈得换成主题色才看得见
+.loading-spinner-primary {
+  width: 16px;
+  height: 16px;
+  margin-right: 0;
+  border-color: var(--border-color);
+  border-top-color: var(--primary-color);
+  flex-shrink: 0;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -871,14 +939,22 @@ h2 {
   flex-direction: column;
   gap: 12px;
   margin-bottom: 20px;
+  max-height: 320px;
+  overflow-y: auto;
 }
 
 .account-item {
   display: flex;
   align-items: center;
+  width: 100%;
   padding: 12px 16px;
   border: 1px solid var(--border-color);
   border-radius: 12px;
+  background-color: transparent;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  text-align: left;
   cursor: pointer;
   transition: all 0.3s;
   position: relative;
@@ -895,7 +971,7 @@ h2 {
     transition: all 0.6s;
   }
 
-  &:hover {
+  &:hover:not(:disabled) {
     border-color: var(--primary-color);
     background-color: var(--hover-color);
     box-shadow: 0 4px 12px var(--color-box-shadow);
@@ -915,9 +991,14 @@ h2 {
     }
   }
 
-  &:active {
+  &:active:not(:disabled) {
     transform: translateY(0);
     box-shadow: 0 2px 6px var(--color-box-shadow);
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.7;
   }
 }
 
@@ -932,10 +1013,24 @@ h2 {
   transition: all 0.3s;
 
   img {
+    display: block;
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
+}
+
+// 没有头像时用昵称首字顶上，比碎图体面
+.account-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: var(--primary-color);
+  color: #fff;
+  font-size: 20px;
+  font-weight: 600;
 }
 
 .account-info {
