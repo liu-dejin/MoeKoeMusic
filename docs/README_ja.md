@@ -175,8 +175,21 @@ Releaseページであなたに適したデバイスのインストールパッ�
 
 2. を使用する `git clonehttps://github.com/iAJue/MoeKoeMusic.git`この倉庫をローカルにクローニングします。
 
-3. `npm install `を使用してプロジェクト依存性をインストールします。
-4. APIサービス端末のコンパイル
+3. プロジェクトの依存関係をインストールします（`api`サブモジュールの依存関係も同時にインストールされます。`pkg`はそちらにあります）：
+
+```sh
+npm run install-all
+```
+
+4. フロントエンドのビルド成果物を生成します：
+
+```sh
+npm run build
+```
+
+> ⚠️ この手順は省略できません。electron-builderは`dist/`ディレクトリだけをクライアントに同梱するため、省略すると`dist/index.html`が見つからず**真っ白なウィンドウ**になります。
+
+5. APIサービス端末のコンパイル
 - Windows:
 ```sh
 npm run build:api:win
@@ -190,7 +203,9 @@ npm run build:api:linux
 npm run build:api:macos
 ```
 
-5. 次のコマンドを選択して適切なインストールパッケージをパッケージ化し、パッケージ化されたファイルは`/dist _ electron `ディレクトリの下にあります。詳細については、[electron-builderドキュメント](https://www.electron.build/cli)
+6. 次のコマンドを選択して適切なインストールパッケージをパッケージ化し、パッケージ化されたファイルは`/dist_electron`ディレクトリの下にあります。詳細については、[electron-builderドキュメント](https://www.electron.build/cli)
+
+> 補足：`npm run electron:build:win` / `:linux` / `:macos`というスクリプトには手順5（APIコンパイル）が既に含まれています。以下に挙げる`npm run electron:build -- --win`のような生のコマンドには含まれないため、手順5を先に実行する必要があります。
 
 
 #### 1. パッケージmacOSプラットフォーム

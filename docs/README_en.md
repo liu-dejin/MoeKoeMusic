@@ -176,8 +176,21 @@ If you cannot find the installation package suitable for your device on the Rele
 
 2. Use ` git clone https://github.com/iAJue/MoeKoeMusic.git `Clone this repository locally.
 
-3. Use 'npm install' to install project dependencies.
-4. Compile API server
+3. Install project dependencies (this also installs the `api` submodule dependencies, which is where `pkg` lives):
+
+```sh
+npm run install-all
+```
+
+4. Build the frontend bundle:
+
+```sh
+npm run build
+```
+
+> ⚠️ Do not skip this step. electron-builder only packs the `dist/` directory into the client, so skipping it produces an app that shows a **blank window** because `dist/index.html` is missing.
+
+5. Compile API server
 - Windows:
 ```sh
 npm run build:api:win
@@ -191,7 +204,9 @@ npm run build:api:linux
 npm run build:api:macos
 ```
 
-5. Choose the following command to package the appropriate installation package for you, and the packaged file should be located in the '/dits_electron' directory. For more information, please visit the [Electron Builder documentation](https://www.electron.build/cli )
+6. Choose the following command to package the appropriate installation package for you, and the packaged file should be located in the '/dist_electron' directory. For more information, please visit the [Electron Builder documentation](https://www.electron.build/cli )
+
+> Note: the `npm run electron:build:win` / `:linux` / `:macos` scripts already include step 5 (API compilation). The raw `npm run electron:build -- --win` style commands listed below do **not**, so step 5 has to be run first for them.
 
 
 #### 1.  Package macOS platform

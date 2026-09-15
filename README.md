@@ -175,8 +175,21 @@ npm run build
 
 2. 使用 `git clone https://github.com/iAJue/MoeKoeMusic.git` 克隆本仓库到本地。
 
-3. 使用 `npm install` 安装项目依赖。
-4. 编译API服务端
+3. 安装项目依赖（会一并安装 `api` 子模块的依赖，`pkg` 就在子模块里）：
+
+```sh
+npm run install-all
+```
+
+4. 构建前端产物：
+
+```sh
+npm run build
+```
+
+> ⚠️ 这一步不能跳过。electron-builder 只会把 `dist/` 目录打包进客户端，跳过它打出来的包会因为找不到 `dist/index.html` 而**白屏**。
+
+5. 编译 API 服务端：
     - Windows:
         ```sh
         npm run build:api:win
@@ -186,11 +199,13 @@ npm run build
         npm run build:api:linux
         ```
     - macOS:
-      ```sh
-      npm run build:api:macos
-      ```
+        ```sh
+        npm run build:api:macos
+        ```
 
-5. 选择下列的命令来打包适合的你的安装包，打包出来的文件在 `/dist_electron` 目录下。了解更多信息可访问 [electron-builder 文档](https://www.electron.build/cli)
+6. 选择下列的命令来打包适合的你的安装包，打包出来的文件在 `/dist_electron` 目录下。了解更多信息可访问 [electron-builder 文档](https://www.electron.build/cli)
+
+> 提示：`npm run electron:build:win` / `:linux` / `:macos` 这类脚本内部已经包含了第 5 步（API 编译），可以直接用；而下面列出的 `npm run electron:build -- --win` 等原始命令**不会**自动编译 API，第 5 步必须先执行。
 
 
 #### 1. 打包 macOS 平台

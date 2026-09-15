@@ -172,8 +172,21 @@ npm run build
 
 2. Клонируйте репозиторий: `git clone https://github.com/iAJue/MoeKoeMusic.git`
 
-3. Установите зависимости: `npm install`
-4. Скомпилируйте API-сервер
+3. Установите зависимости (вместе с зависимостями сабмодуля `api`, где находится `pkg`):
+
+```sh
+npm run install-all
+```
+
+4. Соберите фронтенд:
+
+```sh
+npm run build
+```
+
+> ⚠️ Этот шаг нельзя пропускать. electron-builder упаковывает в клиент только каталог `dist/`, поэтому без него приложение покажет **пустое окно** — `dist/index.html` не найдётся.
+
+5. Скомпилируйте API-сервер
     - Windows:
         ```sh
         npm run build:api:win
@@ -187,7 +200,9 @@ npm run build
       npm run build:api:macos
       ```
 
-5. Выберите команду для сборки. Результат будет в директории `/dist_electron`. Подробнее: [electron-builder](https://www.electron.build/cli)
+6. Выберите команду для сборки. Результат будет в директории `/dist_electron`. Подробнее: [electron-builder](https://www.electron.build/cli)
+
+> Примечание: скрипты `npm run electron:build:win` / `:linux` / `:macos` уже включают шаг 5 (компиляция API). Приведённые ниже «сырые» команды вида `npm run electron:build -- --win` — нет, для них шаг 5 обязателен.
 
 
 #### 1. macOS

@@ -175,8 +175,21 @@ Release 페이지에서 장치에 맞는 설치 패키지를 찾지 못하면 �
 
 2. `git clone 사용https://github.com/iAJue/MoeKoeMusic.git'본 창고를 로컬로 복제합니다.
 
-3. `npm install`을 사용하여 프로젝트 종속성을 설치합니다.
-4. API 서버 컴파일
+3. 프로젝트 종속성을 설치합니다 (`api` 서브모듈 종속성도 함께 설치되며, `pkg`는 그쪽에 있습니다):
+
+```sh
+npm run install-all
+```
+
+4. 프런트엔드 빌드 산출물을 생성합니다:
+
+```sh
+npm run build
+```
+
+> ⚠️ 이 단계는 건너뛸 수 없습니다. electron-builder는 `dist/` 디렉터리만 클라이언트에 포함하므로, 건너뛰면 `dist/index.html`을 찾지 못해 **흰 화면**이 나옵니다.
+
+5. API 서버 컴파일
 - Windows:
 ```sh
 npm run build:api:win
@@ -190,7 +203,9 @@ npm run build:api:linux
 npm run build:api:macos
 ```
 
-1. 다음 명령을 선택하여 적합한 설치 패키지를 포장합니다. 포장된 파일은'/dist_electron'디렉터리에 있습니다.자세한 내용은 [electron-builder 문서](https://www.electron.build/cli)
+6. 다음 명령을 선택하여 적합한 설치 패키지를 포장합니다. 포장된 파일은 '/dist_electron' 디렉터리에 있습니다. 자세한 내용은 [electron-builder 문서](https://www.electron.build/cli)
+
+> 참고: `npm run electron:build:win` / `:linux` / `:macos` 스크립트에는 5단계(API 컴파일)가 이미 포함되어 있습니다. 아래 나열된 `npm run electron:build -- --win` 같은 원시 명령에는 포함되지 않으므로 5단계를 먼저 실행해야 합니다.
 
 
 #### 1. macOS 플랫폼 패키지
